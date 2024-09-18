@@ -143,9 +143,9 @@ def plot_gaussian_kde(data):
     plt.show()
 
 
-# download_video(url, "highlight.mp4")
-# crop_video("highlight.mp4", "highlight_cropped.mp4", 185, 109, 90, 30)
-# extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
-# filter_lines("text.txt", "filtered.txt")
-# sort_lines("filtered.txt", "sorted.txt")
+download_video(url, "highlight.mp4")
+crop_video("highlight.mp4", "highlight_cropped.mp4", 185, 109, 90, 30)
+extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
+filter_lines("text.txt", "filtered.txt")
+sort_lines("filtered.txt", "sorted.txt")
 plot_gaussian_kde("sorted.txt")
