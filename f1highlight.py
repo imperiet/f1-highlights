@@ -9,8 +9,11 @@ from fractions import Fraction
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import time
 
 url = "https://www.youtube.com/watch?v=7ynDOY1PR74"
+
+playlist_url = "https://www.youtube.com/watch?v=7ynDOY1PR74&list=PLfoNZDHitwjUv0pjTwlV1vzaE0r7UDVDR"
 
 
 def download_video(url, output_file):
@@ -28,31 +31,7 @@ def crop_video(input_file, output_file, x, y, width, height):
     subprocess.call(command, shell=True)
 
 
-def save_still_frame(frameIndex):
-    vidcap = cv2.VideoCapture('highlight_cropped.mp4')
-    success, image = vidcap.read()
-    count = 0
-    while success:
-        if count == frameIndex:
-            cv2.imwrite("singleframe.png", image)     # save frame as PNG file
-            break
-        success, image = vidcap.read()
-        count += 1
-
-
 def extract_text_from_video(video_path, output_file, skip_frames=30):
-    """
-    Extracts text from every nth frame of a video and saves it to a text file, displaying a loading bar.
-
-    Args:
-        video_path (str): Path to the video file.
-        output_file (str): Path to the output text file.
-        skip_frames (int): Number of frames to skip between processing.
-
-    Returns:
-        None
-    """
-
     cap = cv2.VideoCapture(video_path)
 
     # Get the total number of frames in the video
@@ -99,8 +78,11 @@ def extract_text_from_video(video_path, output_file, skip_frames=30):
 def filter_lines(input_file, output_file):
     with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
         for line in f_in:
-            if re.match('^[0-9/]+$', line) and all(int(x) <= 80 for x in line.split('/')):
-                f_out.write(line)
+            try:
+                if line and re.match('^[0-9/]+$', line) and all(x and int(float(x)) <= 80 for x in line.split('/')):
+                    f_out.write(line)
+            except:
+                pass
 
 
 def sort_lines(input_file, output_file):
@@ -110,19 +92,23 @@ def sort_lines(input_file, output_file):
         f_out.writelines(sorted_lines)
 
 
-def fraction_to_float(string):
-    num, denom = map(int, string.split('/'))
-    return num / denom
-
-
 def textfile_to_nparray(input_file):
     with open(input_file, 'r') as f:
         lines = f.readlines()
-        return np.array([x for x in (fraction_to_float(line.strip()) for line in lines) if 0 <= x <= 1])
+        return np.array([float(line.strip()) for line in lines])
 
 
-def plot_gaussian_kde(data):
-    data = textfile_to_nparray("sorted.txt")
+def decimalize_text_file(input_file, output_file):
+    with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
+        for line in f_in:
+            fraction = Fraction(line.strip())
+            decimal = float(fraction)
+            if 0 <= decimal <= 1:
+                f_out.write(f'{decimal}\n')
+
+
+def plot_gaussian_kde(input_file):
+    data = textfile_to_nparray(input_file)
 
     # Kernel density estimation (KDE) using a Gaussian kernel
     kde = stats.gaussian_kde(data)
@@ -143,9 +129,66 @@ def plot_gaussian_kde(data):
     plt.show()
 
 
-download_video(url, "highlight.mp4")
-crop_video("highlight.mp4", "highlight_cropped.mp4", 185, 109, 90, 30)
-extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
-filter_lines("text.txt", "filtered.txt")
-sort_lines("filtered.txt", "sorted.txt")
-plot_gaussian_kde("sorted.txt")
+# Extract URLs and save to text file
+
+# download_video(url, "highlight.mp4")
+# crop_video("highlight.mp4", "highlight_cropped.mp4", 185, 109, 90, 30)
+# os.remove("highlight.mp4")
+# extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
+# os.remove("highlight_cropped.mp4")
+# filter_lines("text.txt", "filtered.txt")
+# os.remove("text.txt")
+# sort_lines("filtered.txt", "sorted.txt")
+# os.remove("filtered.txt")
+# decimalize_text_file("sorted.txt", "sorted_decimal.txt")
+# os.remove("sorted.txt")
+# plot_gaussian_kde("sorted_decimal.txt")
+
+def download_playlist(playlist_url, video_func):
+    ydl_opts = {}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # Extract info without downloading
+        result = ydl.extract_info(playlist_url, download=False)
+
+        # Loop over each video in the playlist
+        for video in result['entries']:
+            url = video['webpage_url']
+            download_video(url, "video.mp4")
+
+            # Call the provided function with the downloaded video
+            video_func("video.mp4")
+
+            # Remove the downloaded video
+            os.remove("video.mp4")
+
+
+def append_text(input_file, output_file):
+    with open(input_file, 'r') as f_in, open(output_file, 'a') as f_out:
+        for line in f_in:
+            f_out.write(line)
+
+
+def process_video(video_file):
+    print(f"Processing: {video_file}")
+    # Process the video
+    crop_video(video_file, "highlight_cropped.mp4", 185, 109, 90, 30)
+    extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
+    filter_lines("text.txt", "filtered.txt")
+    sort_lines("filtered.txt", "sorted.txt")
+    decimalize_text_file("sorted.txt", "sorted_decimal.txt")
+    append_text("sorted_decimal.txt", "total.txt")
+    os.remove("highlight_cropped.mp4")
+    os.remove("text.txt")
+    os.remove("filtered.txt")
+    os.remove("sorted.txt")
+    os.remove("sorted_decimal.txt")
+
+
+start_time = time.time()
+print("--- %s seconds ---" % (time.time() - start_time))
+
+# download_playlist(playlist_url, process_video)
+
+plot_gaussian_kde("total.txt")
+
+print("--- %s seconds ---" % (time.time() - start_time))
