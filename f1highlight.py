@@ -10,6 +10,7 @@ import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
 import time
+import datetime
 
 url = "https://www.youtube.com/watch?v=7ynDOY1PR74"
 
@@ -120,29 +121,14 @@ def plot_gaussian_kde(input_file):
     density = kde(x_grid)
 
     # Plot the histogram and KDE
-    plt.hist(data, bins=20, density=True, label='Histogram')
-    plt.plot(x_grid, density, label='KDE')
-    plt.xlabel('Value')
-    plt.ylabel('Density')
+    plt.hist(data, bins=50, density=True, label='Histogram')
+    plt.plot(x_grid, density, label='Kernel Density Estimation')
+    plt.xlabel('Race Progress (%)')
+    plt.ylabel('Occurancy in Race')
     plt.legend()
-    plt.title('Kernel Density Estimation')
+    plt.title('How often is every lap featured in a race')
     plt.show()
 
-
-# Extract URLs and save to text file
-
-# download_video(url, "highlight.mp4")
-# crop_video("highlight.mp4", "highlight_cropped.mp4", 185, 109, 90, 30)
-# os.remove("highlight.mp4")
-# extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
-# os.remove("highlight_cropped.mp4")
-# filter_lines("text.txt", "filtered.txt")
-# os.remove("text.txt")
-# sort_lines("filtered.txt", "sorted.txt")
-# os.remove("filtered.txt")
-# decimalize_text_file("sorted.txt", "sorted_decimal.txt")
-# os.remove("sorted.txt")
-# plot_gaussian_kde("sorted_decimal.txt")
 
 def download_playlist(playlist_url, video_func):
     ydl_opts = {}
@@ -168,27 +154,33 @@ def append_text(input_file, output_file):
             f_out.write(line)
 
 
+def multiply_lines(input_file, output_file, multiplier):
+    with open(input_file, 'r') as f_in, open(output_file, 'w') as f_out:
+        for line in f_in:
+            f_out.write(str(float(line.strip()) * float(multiplier)) + '\n')
+
+
 def process_video(video_file):
     print(f"Processing: {video_file}")
     # Process the video
     crop_video(video_file, "highlight_cropped.mp4", 185, 109, 90, 30)
     extract_text_from_video("highlight_cropped.mp4", "text.txt", 30)
     filter_lines("text.txt", "filtered.txt")
-    sort_lines("filtered.txt", "sorted.txt")
-    decimalize_text_file("sorted.txt", "sorted_decimal.txt")
+    decimalize_text_file("filtered.txt", "sorted_decimal.txt")
     append_text("sorted_decimal.txt", "total.txt")
     os.remove("highlight_cropped.mp4")
     os.remove("text.txt")
     os.remove("filtered.txt")
-    os.remove("sorted.txt")
     os.remove("sorted_decimal.txt")
 
 
 start_time = time.time()
-print("--- %s seconds ---" % (time.time() - start_time))
 
-# download_playlist(playlist_url, process_video)
+download_playlist(playlist_url, process_video)
 
+sort_lines("total.txt", "sorted.txt")
+multiply_lines("sorted.txt", "total.txt", 100)
+os.remove("sorted.txt")
 plot_gaussian_kde("total.txt")
 
 print("--- %s seconds ---" % (time.time() - start_time))
